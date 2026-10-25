@@ -56,7 +56,7 @@
     m.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
   });
 
-  /* التمارين: تلميح عند الخطأ، ثم إظهار الجواب الصحيح وشرحه بعد محاولتين */
+  /* التمارين: عند الخطأ يظهر الجواب الصحيح وسببه وما اختاره المتعلّم، مع زرّ لإعادة المحاولة */
   var rule = '';
   var defs = document.querySelectorAll('.def .txt');
   if (defs.length && !document.querySelector('.letter')) {
@@ -65,32 +65,46 @@
   }
   var qs = document.querySelectorAll('.q'), right = 0, sc = g('score-v');
   function upd() { if (sc) sc.textContent = right + ' من ' + qs.length; }
+  function line(parent, cls, label, text) {
+    var p = document.createElement('p'); p.className = cls;
+    if (label) { var b = document.createElement('b'); b.textContent = label; p.appendChild(b); p.appendChild(document.createTextNode(' ')); }
+    p.appendChild(document.createTextNode(text)); parent.appendChild(p); return p;
+  }
   qs.forEach(function (q) {
     var a = +q.dataset.a, fb = q.querySelector('.fb'), box = q.querySelector('.opts'),
-        bs = [].slice.call(box.querySelectorAll('button')), tries = 0, hasAudio = !!q.querySelector('.qt .say');
+        bs = [].slice.call(box.querySelectorAll('button')), first = true;
     bs.forEach(function (b, i) { b.dataset.i = i; });
     var correct = bs[a];
-    for (var j = bs.length - 1; j > 0; j--) { var r = Math.floor(Math.random() * (j + 1)); var t = bs[j]; bs[j] = bs[r]; bs[r] = t; }
-    bs.forEach(function (b) { box.appendChild(b); });
-    function why() { return q.dataset.why || ''; }
+    function shuffle() {
+      for (var j = bs.length - 1; j > 0; j--) { var r = Math.floor(Math.random() * (j + 1)); var t = bs[j]; bs[j] = bs[r]; bs[r] = t; }
+      bs.forEach(function (b) { box.appendChild(b); });
+    }
+    shuffle();
+    function label(b) { var t = b.textContent.trim(); if (!t) { var im = b.querySelector('img'); t = im ? (im.getAttribute('alt') || 'الصورة') : ''; } return t; }
+    var why = q.dataset.why || '';
+    function finish() { bs.forEach(function (x) { x.disabled = true; }); }
     bs.forEach(function (b) {
       b.addEventListener('click', function () {
+        fb.innerHTML = '';
         if (b === correct) {
-          b.classList.add('ok'); bs.forEach(function (x) { x.disabled = true; });
-          fb.className = 'fb ok'; fb.textContent = 'أحسنت! ' + why();
-          if (!tries) right++; upd();
+          b.classList.add('ok'); finish();
+          fb.className = 'fb ok';
+          line(fb, 'fv', 'أحسنت!', why);
+          if (first) right++; upd(); first = false;
           return;
         }
-        tries++; b.classList.add('bad'); b.disabled = true; q.setAttribute('data-wrong', '1');
-        var left = bs.filter(function (x) { return !x.disabled; }).length;
-        if (tries >= 2 || left <= 1) {
-          correct.classList.add('ok', 'reveal'); bs.forEach(function (x) { x.disabled = true; });
-          fb.className = 'fb bad';
-          fb.textContent = 'الجواب الصحيح: «' + correct.textContent.trim() + '». ' + (why() || (rule ? 'تذكّر: ' + rule : ''));
-        } else {
-          fb.className = 'fb bad';
-          fb.textContent = 'ليس هذا الجواب. ' + (hasAudio ? 'استمع مرّة أخرى، ثمّ حاول.' : (rule ? 'تذكّر: ' + rule : 'حاول مرّة أخرى.'));
-        }
+        first = false; q.setAttribute('data-wrong', '1');
+        b.classList.add('bad'); correct.classList.add('ok', 'reveal'); finish();
+        fb.className = 'fb bad';
+        line(fb, 'fv', 'إجابتك غير صحيحة.', 'اخترتَ «' + label(b) + '»، والصواب: «' + label(correct) + '».');
+        if (why) line(fb, 'fw', 'السبب:', why);
+        if (!why && rule) line(fb, 'fr', 'تذكّر:', rule.replace(/[:：]\s*$/, '.'));
+        var again = document.createElement('button'); again.type = 'button'; again.className = 'again'; again.textContent = 'أعد المحاولة';
+        again.addEventListener('click', function () {
+          bs.forEach(function (x) { x.disabled = false; x.classList.remove('ok', 'bad', 'reveal'); });
+          fb.innerHTML = ''; fb.className = 'fb'; shuffle(); bs[0].focus();
+        });
+        fb.appendChild(again);
       });
     });
   });
@@ -149,12 +163,17 @@
     o.querySelector('.clr').onclick = function () { [].slice.call(line.querySelectorAll('button')).forEach(function (b) { pool.appendChild(b); }); fb.textContent = ''; };
   });
   document.querySelectorAll('.dict').forEach(function (d) {
-    function norm(s) { return s.replace(/[ً-ْٰـ]/g, '').replace(/[.،,؛;؟?!:«»"'()\-–]/g, ' ').replace(/\s+/g, ' ').trim(); }
-    var ans = d.getAttribute('data-ans'), inp = d.querySelector('input'), fb = d.querySelector('.fb');
+    /* المقارنة: نتجاهل الحركات والمسافات وعلامات الترقيم فقط، ونبقي الهمزات والحروف كما هي */
+    function norm(s) { return s.replace(/[ً-ْٰـ]/g, '').replace(/ی/g, 'ي').replace(/ک/g, 'ك')
+      .replace(/[.،,؛;؟?!:«»"'()\-–]/g, ' ').replace(/\s+/g, ' ').trim(); }
+    var ans = d.getAttribute('data-ans'), inp = d.querySelector('input'), fb = d.querySelector('.fb'), wr = d.classList.contains('wr');
     function go() {
+      fb.innerHTML = '';
+      if (!norm(inp.value)) { fb.className = 'fb'; fb.textContent = 'اكتب جوابك في الخانة أوّلاً.'; inp.focus(); return; }
       var ok = norm(inp.value) === norm(ans); fb.className = 'fb ' + (ok ? 'ok' : 'bad');
-      if (ok) { fb.textContent = 'أحسنت! كتابة صحيحة.'; return; }
-      fb.textContent = d.classList.contains('wr') ? 'الجواب الصحيح: ' : 'الكتابة الصحيحة: '; var b = document.createElement('b'); b.textContent = ans; fb.appendChild(b);
+      if (ok) { line(fb, 'fv', 'أحسنت!', wr ? 'جواب صحيح.' : 'كتابة صحيحة.'); return; }
+      line(fb, 'fv', wr ? 'إجابتك غير صحيحة.' : 'في الكتابة خطأ.', 'كتبتَ «' + inp.value.trim() + '»، والصواب: «' + ans + '».');
+      line(fb, 'fr', 'نصيحة:', wr ? 'قارن جوابك بالصواب حرفاً حرفاً، ثمّ أعد كتابته.' : 'استمع مرّة أخرى، وانتبه إلى الحروف المتشابهة والهمزة والتاء.');
     }
     d.querySelector('.chk').onclick = go; inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
   });
@@ -194,5 +213,12 @@
       var r = document.referrer ? new URL(document.referrer) : null, t = new URL(bk.getAttribute('href'), location.href);
       if (r && r.origin === location.origin && r.pathname === t.pathname && history.length > 1) { e.preventDefault(); history.back(); }
     } catch (x) {}
+  });
+})();
+
+/* الهاتف: حين يظهر لوحة المفاتيح نُبقي خانة الكتابة ظاهرة */
+(function () {
+  document.querySelectorAll('.dict input').forEach(function (i) {
+    i.addEventListener('focus', function () { setTimeout(function () { try { i.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }, 320); });
   });
 })();

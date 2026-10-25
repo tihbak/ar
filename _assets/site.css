@@ -399,3 +399,28 @@ html:not(.js) .tabs{display:none}
   .cover .hero{width:min(100%,320px)}
 }
 @media print{.bar .way{display:none}.cover .hero{width:240px}}
+
+/* ===== التغذية الراجعة واللمس (3) ===== */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,a,[role="button"]{touch-action:manipulation}
+.opts button{min-height:44px}
+.say{min-width:40px;min-height:40px}
+.dict input{font-size:max(16px,1rem)}
+.fb p{margin:.2rem 0;line-height:1.75}
+.fb p b{font-weight:700}
+.fb.ok p.fv b{color:var(--ok)}
+.fb.bad p.fv b{color:var(--bad)}
+.fb p.fw,.fb p.fr{color:var(--ink);font-weight:400}
+.fb p.fr{color:var(--soft);font-size:.92em}
+.fb .again{font:inherit;font-size:.85rem;margin-top:.35rem;padding:.25rem 1rem;min-height:40px;border-radius:12px;border:2px solid var(--frame);
+  background:#fff;color:var(--deep);cursor:pointer}
+.fb .again:hover{background:var(--sky)}
+.opts button.bad{text-decoration:line-through;text-decoration-thickness:2px}
+.opts button.ok::before{content:"✓ ";font-weight:700}
+.opts button.bad::before{content:"✗ ";font-weight:700}
+@media (pointer:coarse),(max-width:640px){
+  .tools button{min-height:40px;min-width:40px;font-size:.85rem}
+  .bar a.back{min-height:40px;padding:.2rem 1rem}
+  .bar a.home{width:40px;height:40px}
+}
+.btn-home{display:inline-block;margin-top:.6rem;padding:.4rem 1.2rem;border-radius:14px;background:var(--frame);color:#fff;text-decoration:none}
